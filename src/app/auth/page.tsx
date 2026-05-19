@@ -11,10 +11,12 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setSuccessMsg('')
     setLoading(true)
 
     const form = e.currentTarget
@@ -29,6 +31,11 @@ export default function AuthPage() {
       if (isLogin) {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         if (signInError) throw signInError
+
+        // Always redirect to onboarding after login
+        // Onboarding handles routing to dashboard based on chosen path
+        router.push('/onboarding')
+        router.refresh()
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
@@ -38,10 +45,12 @@ export default function AuthPage() {
           },
         })
         if (signUpError) throw signUpError
-      }
 
-      router.push('/dashboard')
-      router.refresh()
+        // After successful registration, switch to login tab with success message
+        form.reset()
+        setIsLogin(true)
+        setSuccessMsg('Account created successfully! Please log in with your credentials.')
+      }
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.')
     } finally {
@@ -50,35 +59,68 @@ export default function AuthPage() {
   }
 
   return (
-    <div id="page-auth" className="page active">
-      <div className="auth-bg-orbs">
-        <div className="orb orb-1"></div>
-        <div className="orb orb-2"></div>
+    <div id="page-auth" className="auth-fullpage">
+      <div className="auth-fullpage-left">
+        <div className="auth-brand-content">
+          <Link href="/" className="nav-logo auth-logo">Pathfinder<span>AI</span></Link>
+          <h1 className="auth-brand-title">
+            Your AI-Powered<br/><span className="gradient-text">Career Journey</span>
+          </h1>
+          <p className="auth-brand-desc">
+            Empowering students to find their purpose and job seekers to land their dream role — all with the intelligence of modern AI.
+          </p>
+          <div className="auth-brand-features">
+            <div className="auth-feature-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span>AI-powered career recommendations</span>
+            </div>
+            <div className="auth-feature-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span>Personalized learning roadmaps</span>
+            </div>
+            <div className="auth-feature-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span>Smart job matching & search</span>
+            </div>
+          </div>
+        </div>
+        <div className="auth-bg-orbs" aria-hidden="true">
+          <div className="orb orb-1"></div>
+          <div className="orb orb-2"></div>
+        </div>
       </div>
-      <div className="auth-wrapper">
+
+      <div className="auth-fullpage-right">
         <div className="auth-box">
           <div className="auth-header">
-            <Link href="/" className="nav-logo auth-logo">Pathfinder<span>AI</span></Link>
-            <p className="auth-tagline">Your AI-powered career journey starts here</p>
+            <h2 className="auth-box-title">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+            <p className="auth-tagline">{isLogin ? 'Sign in to continue your journey' : 'Start your AI-powered career path'}</p>
           </div>
 
-          <div className="auth-tabs">
+          <div className="auth-tabs" data-active={isLogin ? 'login' : 'signup'}>
             <button
               className={`auth-tab ${isLogin ? 'active' : ''}`}
-              onClick={() => { setIsLogin(true); setError('') }}
+              onClick={() => { setIsLogin(true); setError(''); setSuccessMsg('') }}
             >
               Login
             </button>
             <button
               className={`auth-tab ${!isLogin ? 'active' : ''}`}
-              onClick={() => { setIsLogin(false); setError('') }}
+              onClick={() => { setIsLogin(false); setError(''); setSuccessMsg('') }}
             >
               Sign Up
             </button>
           </div>
 
+          {successMsg && (
+            <div className="auth-alert success">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18, flexShrink: 0 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              {successMsg}
+            </div>
+          )}
+
           {error && (
-            <div className="auth-error" style={{ color: '#ef4444', marginBottom: 12, fontSize: 14 }}>
+            <div className="auth-alert error">
               {error}
             </div>
           )}

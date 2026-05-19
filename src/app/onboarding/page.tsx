@@ -31,7 +31,7 @@ export default function OnboardingPage() {
         const data = await res.json()
         const prof = data.data
         setProfile(prof)
-        setSelectedRole(prof.role)
+        // Pre-fill form data from existing profile but always start on step 1
         setFormData({
           firstName: prof.first_name || '',
           lastName: prof.last_name || '',
@@ -40,18 +40,40 @@ export default function OnboardingPage() {
           careerGoals: prof.career_goals || '',
           experienceLevel: prof.experience_level || ''
         })
-        // If profile is already filled, skip to step 2
-        if (prof.first_name) {
-          setStep(2)
-        }
       }
     } catch (error) {
       console.error('Error loading profile:', error)
     }
   }
 
-  const handleRoleSelect = (role: 'student' | 'jobseeker') => {
+  const isProfileComplete = (prof: any) => {
+    return prof?.first_name && prof?.last_name && prof?.current_role && prof?.experience_level
+  }
+
+  const handleRoleSelect = async (role: 'student' | 'jobseeker') => {
     setSelectedRole(role)
+
+    // If the user already has a complete profile, save role and go to dashboard
+    if (isProfileComplete(profile)) {
+      setLoading(true)
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role })
+        })
+        if (res.ok) {
+          router.push('/dashboard')
+          return
+        }
+      } catch (error) {
+        console.error('Error updating role:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Otherwise proceed to step 2 to complete profile
     setStep(2)
   }
 

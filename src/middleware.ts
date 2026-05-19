@@ -35,6 +35,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
+  // Redirect authenticated users away from auth page to onboarding
+  if (user && pathname === '/auth') {
+    return NextResponse.redirect(new URL('/onboarding', request.url))
+  }
+
   if (user) {
     response.headers.set('x-user-id', user.id)
   }

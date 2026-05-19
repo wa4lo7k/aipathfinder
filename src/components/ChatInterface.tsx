@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Loader2, ArrowLeft } from 'lucide-react'
+import { Send, ArrowLeft, Bot, User, Sparkles } from 'lucide-react'
 
 interface Message {
   id: string
@@ -21,6 +21,7 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
   const [loading, setLoading] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadMessages()
@@ -57,7 +58,6 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
     setInput('')
     setLoading(true)
 
-    // Add user message optimistically
     const tempUserMsg: Message = {
       id: 'temp-' + Date.now(),
       role: 'user',
@@ -74,10 +74,8 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
       })
 
       if (res.ok) {
-        // Check if it's a streaming response
         const contentType = res.headers.get('content-type')
         if (contentType?.includes('text/event-stream')) {
-          // Handle streaming response
           const reader = res.body?.getReader()
           const decoder = new TextDecoder()
           let assistantMessage = ''
@@ -122,9 +120,7 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
             }
           }
         } else {
-          // Handle regular JSON response
-          const data = await res.json()
-          await loadMessages() // Reload all messages
+          await loadMessages()
         }
       } else {
         alert('Failed to send message')
@@ -134,88 +130,131 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
       alert('Error sending message')
     } finally {
       setLoading(false)
+      inputRef.current?.focus()
     }
   }
 
   if (loadingMessages) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <Loader2 className="animate-spin" size={32} />
+      <div className="chat-container">
+        <div className="chat-header">
+          <button onClick={onBack} className="chat-back-btn">
+            <ArrowLeft size={20} />
+          </button>
+          <div className="chat-header-info">
+            <div className="chat-ai-avatar"><Bot size={18} /></div>
+            <div>
+              <h3 className="chat-header-title">AI Career Assistant</h3>
+              <span className="chat-header-status">Loading...</span>
+            </div>
+          </div>
+        </div>
+        <div className="chat-messages">
+          <div className="chat-loading-state">
+            <div className="dot-flashing"><span></span><span></span><span></span></div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '600px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
-      <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text)' }}>
+    <div className="chat-container">
+      {/* Header */}
+      <div className="chat-header">
+        <button onClick={onBack} className="chat-back-btn">
           <ArrowLeft size={20} />
         </button>
-        <h3 style={{ margin: 0 }}>AI Career Assistant</h3>
+        <div className="chat-header-info">
+          <div className="chat-ai-avatar"><Bot size={18} /></div>
+          <div>
+            <h3 className="chat-header-title">AI Career Assistant</h3>
+            <span className="chat-header-status">
+              {loading ? (
+                <>Thinking<span className="dot-flashing-inline"><span></span><span></span><span></span></span></>
+              ) : (
+                <>● Online</>
+              )}
+            </span>
+          </div>
+        </div>
+        <div className="chat-header-badge">
+          <Sparkles size={14} />
+          <span>AI Powered</span>
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Messages */}
+      <div className="chat-messages">
         {messages.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '48px' }}>
-            <p>Start a conversation with your AI career assistant!</p>
-            <p style={{ fontSize: '14px', marginTop: '8px' }}>Ask about career paths, job search tips, or skill development.</p>
+          <div className="chat-welcome">
+            <div className="chat-welcome-icon">
+              <Bot size={36} />
+            </div>
+            <h3>Hello! I'm your AI Career Assistant</h3>
+            <p>Ask me about career paths, job search strategies, skill development, resume tips, or anything career-related!</p>
+            <div className="chat-suggestions">
+              <button onClick={() => { setInput('What career paths match my skills?'); }} className="chat-suggestion-chip">
+                🎯 Career paths for my skills
+              </button>
+              <button onClick={() => { setInput('Help me improve my resume'); }} className="chat-suggestion-chip">
+                📄 Resume improvement tips
+              </button>
+              <button onClick={() => { setInput('What skills should I learn next?'); }} className="chat-suggestion-chip">
+                📚 Skills to learn next
+              </button>
+            </div>
           </div>
         ) : (
           messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '80%',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg)',
-                color: msg.role === 'user' ? 'white' : 'var(--text)',
-              }}
-            >
-              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
-              <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
-                {new Date(msg.created_at).toLocaleTimeString()}
+            <div key={msg.id} className={`chat-msg ${msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-ai'}`}>
+              <div className="chat-msg-avatar">
+                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+              </div>
+              <div className="chat-msg-content">
+                <div className="chat-msg-bubble">
+                  <div className="chat-msg-text">{msg.content}</div>
+                </div>
+                <div className="chat-msg-time">
+                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
             </div>
           ))
         )}
         {loading && (
-          <div style={{ alignSelf: 'flex-start', padding: '12px 16px', borderRadius: '12px', background: 'var(--bg)' }}>
-            <Loader2 className="animate-spin" size={16} />
+          <div className="chat-msg chat-msg-ai">
+            <div className="chat-msg-avatar"><Bot size={16} /></div>
+            <div className="chat-msg-content">
+              <div className="chat-msg-bubble chat-typing-bubble">
+                <div className="dot-flashing"><span></span><span></span><span></span></div>
+              </div>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', gap: '12px' }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={loading}
-          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }}
-        />
-        <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '8px',
-            background: 'var(--accent)',
-            color: 'white',
-            border: 'none',
-            cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            opacity: loading || !input.trim() ? 0.5 : 1
-          }}
-        >
-          {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-          Send
-        </button>
+      {/* Input */}
+      <form onSubmit={sendMessage} className="chat-input-bar">
+        <div className="chat-input-wrap">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            disabled={loading}
+            className="chat-input"
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="chat-send-btn"
+          >
+            <Send size={18} />
+          </button>
+        </div>
       </form>
     </div>
   )

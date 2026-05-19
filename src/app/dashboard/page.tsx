@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LayoutDashboard, Briefcase, Bot, Map, FileText, TrendingUp, Target, MessageSquare, Pencil, Search, Plus, Loader2, Upload } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Bot, Map, FileText, TrendingUp, Target, MessageSquare, Pencil, Search, Plus, Upload, GraduationCap, Compass, BookOpen, Zap } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import ChatInterface from '@/components/ChatInterface'
 
@@ -32,14 +32,29 @@ export default function DashboardPage() {
   const [showRoadmapForm, setShowRoadmapForm] = useState(false)
   const [loadingRoadmap, setLoadingRoadmap] = useState(false)
 
-  const navItems = [
-    { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
-    { id: 'jobs', icon: Briefcase, label: 'Jobs' },
-    { id: 'ai-chat', icon: Bot, label: 'AI Assistant' },
-    { id: 'roadmaps', icon: Map, label: 'Roadmaps' },
-    { id: 'resume', icon: FileText, label: 'Resume' },
-    { id: 'recommendations', icon: Target, label: 'Career Paths' },
-  ]
+  const isStudent = profile?.role === 'student'
+  const isJobSeeker = profile?.role === 'jobseeker'
+
+  const navItems = useMemo(() => {
+    const items = [
+      { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
+    ]
+    if (isJobSeeker) {
+      items.push({ id: 'jobs', icon: Briefcase, label: 'Jobs' })
+    }
+    items.push(
+      { id: 'ai-chat', icon: Bot, label: 'AI Assistant' },
+      { id: 'roadmaps', icon: Map, label: 'Roadmaps' },
+      { id: 'resume', icon: FileText, label: 'Resume' },
+    )
+    if (isStudent) {
+      items.push({ id: 'recommendations', icon: Target, label: 'Career Paths' })
+    }
+    if (isJobSeeker) {
+      items.push({ id: 'recommendations', icon: Target, label: 'Career Paths' })
+    }
+    return items
+  }, [isStudent, isJobSeeker])
 
   // Fetch all data on mount
   useEffect(() => {
@@ -64,11 +79,22 @@ export default function DashboardPage() {
         setStats(statsData.data)
       }
 
-      // Fetch profile
+      // Fetch profile and check onboarding completion
       const profileRes = await fetch('/api/profile')
       if (profileRes.ok) {
         const profileData = await profileRes.json()
-        setProfile(profileData.data)
+        const prof = profileData.data
+        setProfile(prof)
+
+        // Redirect to onboarding if profile is incomplete
+        if (!prof?.role || !prof?.first_name) {
+          router.push('/onboarding')
+          return
+        }
+      } else {
+        // Can't fetch profile — redirect to onboarding
+        router.push('/onboarding')
+        return
       }
 
       // Fetch conversations
@@ -213,8 +239,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <Loader2 className="animate-spin" size={32} />
+      <div className="dash-full-loader">
+        <div className="dot-flashing"><span></span><span></span><span></span></div>
       </div>
     )
   }
@@ -222,7 +248,7 @@ export default function DashboardPage() {
   return (
     <div id="page-dashboard" className="page active">
       <button 
-        className="hamburger sidebar-hamburger" 
+        className={`hamburger sidebar-hamburger ${sidebarOpen ? 'open' : ''}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
       >
@@ -241,7 +267,7 @@ export default function DashboardPage() {
                 <button
                   key={item.id}
                   className={`sidebar-nav-item ${activeSection === item.id ? 'active' : ''}`}
-                  onClick={() => setActiveSection(item.id)}
+                  onClick={() => { setActiveSection(item.id); setSidebarOpen(false) }}
                 >
                   <span className="nav-icon"><NavIcon size={18} strokeWidth={2} /></span>
                   {item.label}
@@ -287,7 +313,10 @@ export default function DashboardPage() {
           <div className="dash-topbar">
             <div className="dash-topbar-left">
               <h1 className="dash-page-title">{navItems.find(i => i.id === activeSection)?.label || 'Dashboard'}</h1>
-              <p className="dash-page-sub">Welcome back, {profile?.full_name || 'User'}! Here's your career progress.</p>
+              <p className="dash-page-sub">
+                Welcome back, {profile?.full_name || 'User'}! 
+                {isStudent ? "Let's explore your career path." : "Here's your job search progress."}
+              </p>
             </div>
             <div className="dash-topbar-right">
               <button onClick={handleLogout} className="btn-topbar-logout">
@@ -298,51 +327,168 @@ export default function DashboardPage() {
           </div>
 
           <div id="dash-content-area">
-            {activeSection === 'overview' && (
+            {activeSection === 'overview' && isStudent && (
               <div>
                 <div className="dash-stats">
-                  <div className="dash-stat-card">
-                    <div className="ds-icon"><Target size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{stats?.jobs_applied || 0}</div>
-                    <div className="ds-lbl">Jobs Applied</div>
+                  <div className="dash-stat-card card-accent-purple">
+                    <div className="ds-icon"><GraduationCap size={22} strokeWidth={2} /></div>
+                    <div className="ds-val purple">{recommendations.length}</div>
+                    <div className="ds-lbl">Career Paths Found</div>
                   </div>
-                  <div className="dash-stat-card">
+                  <div className="dash-stat-card card-accent-blue">
                     <div className="ds-icon"><MessageSquare size={22} strokeWidth={2} /></div>
                     <div className="ds-val purple">{stats?.conversations_count || 0}</div>
-                    <div className="ds-lbl">AI Conversations</div>
+                    <div className="ds-lbl">AI Sessions</div>
                   </div>
-                  <div className="dash-stat-card">
+                  <div className="dash-stat-card card-accent-green">
                     <div className="ds-icon"><Map size={22} strokeWidth={2} /></div>
                     <div className="ds-val purple">{stats?.active_roadmaps || 0}</div>
-                    <div className="ds-lbl">Active Roadmaps</div>
+                    <div className="ds-lbl">Learning Roadmaps</div>
                   </div>
-                  <div className="dash-stat-card">
+                  <div className="dash-stat-card card-accent-pink">
                     <div className="ds-icon"><TrendingUp size={22} strokeWidth={2} /></div>
                     <div className="ds-val purple">{stats?.profile_score || 0}%</div>
-                    <div className="ds-lbl">Profile Complete</div>
+                    <div className="ds-lbl">Profile Score</div>
                   </div>
                 </div>
 
-                <div className="section-inner">
+                <div className="dash-overview-grid">
+                  <div className="dash-card dash-card-featured">
+                    <div className="dash-card-featured-header">
+                      <Compass size={20} />
+                      <h3>Explore Career Paths</h3>
+                    </div>
+                    <p className="dash-card-desc">Discover careers that align with your interests, skills, and academic background.</p>
+                    <button onClick={() => { setActiveSection('recommendations'); generateRecommendations(); }} className="dash-action-btn" disabled={loadingRecommendations}>
+                      {loadingRecommendations ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <><Zap size={16} /> Get AI Recommendations</>}
+                    </button>
+                  </div>
+                  <div className="dash-card dash-card-featured">
+                    <div className="dash-card-featured-header">
+                      <BookOpen size={20} />
+                      <h3>Learning Roadmaps</h3>
+                    </div>
+                    <p className="dash-card-desc">Build a structured learning path for your dream career with AI-generated milestones.</p>
+                    <button onClick={() => setActiveSection('roadmaps')} className="dash-action-btn">
+                      <Map size={16} /> View Roadmaps
+                    </button>
+                  </div>
+                  <div className="dash-card dash-card-featured">
+                    <div className="dash-card-featured-header">
+                      <Bot size={20} />
+                      <h3>AI Career Coach</h3>
+                    </div>
+                    <p className="dash-card-desc">Chat with your personal AI assistant about degrees, universities, and career options.</p>
+                    <button onClick={() => { setActiveSection('ai-chat'); createNewConversation(); }} className="dash-action-btn">
+                      <MessageSquare size={16} /> Start Chat
+                    </button>
+                  </div>
+                </div>
+
+                <div className="section-inner" style={{ marginTop: '28px' }}>
                   <div className="section-head">
                     <div className="section-label">Recent Activity</div>
                     <h2 className="section-title">Your Progress</h2>
                   </div>
                   {stats?.recent_activity && stats.recent_activity.length > 0 ? (
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
+                    <div className="dash-card">
                       {stats.recent_activity.map((activity: any, idx: number) => (
-                        <div key={idx} style={{ padding: '12px 0', borderBottom: idx < stats.recent_activity.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                          <div style={{ fontWeight: 600, marginBottom: '4px' }}>{activity.title}</div>
-                          <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                        <div key={idx} className="dash-activity-item" style={{ borderBottom: idx < stats.recent_activity.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                          <div className="dash-activity-title">{activity.title}</div>
+                          <div className="dash-activity-meta">
                             {activity.type} • {new Date(activity.created_at).toLocaleDateString()}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      <p>Complete your profile to get personalized career recommendations!</p>
-                      <Link href="/onboarding" style={{ color: 'var(--accent)', marginTop: '16px', display: 'inline-block' }}>Complete Profile →</Link>
+                    <div className="dash-empty-state">
+                      <p>Start exploring to see your activity here!</p>
+                      <button onClick={() => setActiveSection('recommendations')} className="dash-empty-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Explore Career Paths →</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'overview' && isJobSeeker && (
+              <div>
+                <div className="dash-stats">
+                  <div className="dash-stat-card card-accent-pink">
+                    <div className="ds-icon"><Target size={22} strokeWidth={2} /></div>
+                    <div className="ds-val purple">{stats?.jobs_applied || 0}</div>
+                    <div className="ds-lbl">Jobs Applied</div>
+                  </div>
+                  <div className="dash-stat-card card-accent-blue">
+                    <div className="ds-icon"><Briefcase size={22} strokeWidth={2} /></div>
+                    <div className="ds-val purple">{jobs.length}</div>
+                    <div className="ds-lbl">Jobs Found</div>
+                  </div>
+                  <div className="dash-stat-card card-accent-purple">
+                    <div className="ds-icon"><MessageSquare size={22} strokeWidth={2} /></div>
+                    <div className="ds-val purple">{stats?.conversations_count || 0}</div>
+                    <div className="ds-lbl">AI Sessions</div>
+                  </div>
+                  <div className="dash-stat-card card-accent-green">
+                    <div className="ds-icon"><TrendingUp size={22} strokeWidth={2} /></div>
+                    <div className="ds-val purple">{stats?.profile_score || 0}%</div>
+                    <div className="ds-lbl">Profile Score</div>
+                  </div>
+                </div>
+
+                <div className="dash-overview-grid">
+                  <div className="dash-card dash-card-featured">
+                    <div className="dash-card-featured-header">
+                      <Search size={20} />
+                      <h3>Smart Job Search</h3>
+                    </div>
+                    <p className="dash-card-desc">Find matching opportunities using AI-powered search across top job platforms.</p>
+                    <button onClick={() => { setActiveSection('jobs'); searchJobs(); }} className="dash-action-btn">
+                      <Briefcase size={16} /> Search Jobs
+                    </button>
+                  </div>
+                  <div className="dash-card dash-card-featured">
+                    <div className="dash-card-featured-header">
+                      <FileText size={20} />
+                      <h3>Resume Builder</h3>
+                    </div>
+                    <p className="dash-card-desc">Upload and analyze your resume with AI to maximize your application success.</p>
+                    <button onClick={() => setActiveSection('resume')} className="dash-action-btn">
+                      <Upload size={16} /> Manage Resume
+                    </button>
+                  </div>
+                  <div className="dash-card dash-card-featured">
+                    <div className="dash-card-featured-header">
+                      <Bot size={20} />
+                      <h3>Interview Prep</h3>
+                    </div>
+                    <p className="dash-card-desc">Practice interviews and get coaching from your AI career assistant.</p>
+                    <button onClick={() => { setActiveSection('ai-chat'); createNewConversation(); }} className="dash-action-btn">
+                      <MessageSquare size={16} /> Start Chat
+                    </button>
+                  </div>
+                </div>
+
+                <div className="section-inner" style={{ marginTop: '28px' }}>
+                  <div className="section-head">
+                    <div className="section-label">Recent Activity</div>
+                    <h2 className="section-title">Job Search Progress</h2>
+                  </div>
+                  {stats?.recent_activity && stats.recent_activity.length > 0 ? (
+                    <div className="dash-card">
+                      {stats.recent_activity.map((activity: any, idx: number) => (
+                        <div key={idx} className="dash-activity-item" style={{ borderBottom: idx < stats.recent_activity.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                          <div className="dash-activity-title">{activity.title}</div>
+                          <div className="dash-activity-meta">
+                            {activity.type} • {new Date(activity.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="dash-empty-state">
+                      <p>Start your job search to track your progress here!</p>
+                      <button onClick={() => setActiveSection('jobs')} className="dash-empty-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Search Jobs →</button>
                     </div>
                   )}
                 </div>
@@ -355,45 +501,43 @@ export default function DashboardPage() {
                   <div className="section-label">Job Search</div>
                   <h2 className="section-title">Find Your Next Opportunity</h2>
                 </div>
-                <form onSubmit={searchJobs} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <form onSubmit={searchJobs} className="dash-card" style={{ marginBottom: '24px' }}>
+                  <div className="dash-search-row">
                     <input
                       type="text"
                       placeholder="Job title, keywords..."
                       value={jobSearch.query}
                       onChange={(e) => setJobSearch({ ...jobSearch, query: e.target.value })}
-                      onKeyPress={(e) => e.key === 'Enter' && searchJobs(e)}
-                      style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }}
+                      className="dash-input"
                     />
                     <input
                       type="text"
                       placeholder="Location"
                       value={jobSearch.location}
                       onChange={(e) => setJobSearch({ ...jobSearch, location: e.target.value })}
-                      onKeyPress={(e) => e.key === 'Enter' && searchJobs(e)}
-                      style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }}
+                      className="dash-input"
                     />
-                    <button type="submit" disabled={loadingJobs} style={{ padding: '12px 24px', borderRadius: '8px', background: 'var(--accent)', color: 'white', border: 'none', cursor: loadingJobs ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: loadingJobs ? 0.6 : 1 }}>
-                      {loadingJobs ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                    <button type="submit" disabled={loadingJobs} className="dash-search-btn">
+                      {loadingJobs ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <Search size={18} />}
                       Search
                     </button>
                   </div>
                 </form>
-                <div style={{ display: 'grid', gap: '16px' }}>
+                <div className="dash-grid-list">
                   {loadingJobs ? (
-                    <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-                      <Loader2 className="animate-spin" size={32} style={{ margin: '0 auto 16px' }} />
+                    <div className="dash-empty-state">
+                      <div className="dot-flashing" style={{ margin: '0 auto 16px' }}><span></span><span></span><span></span></div>
                       <p>Searching for jobs...</p>
                     </div>
                   ) : jobs.length > 0 ? jobs.map((job) => (
-                    <div key={job.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
-                      <h3 style={{ marginBottom: '8px' }}>{job.title}</h3>
-                      <div style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>{job.company} • {job.location}</div>
-                      <p style={{ marginBottom: '16px', fontSize: '14px' }}>{job.description?.substring(0, 200)}...</p>
-                      {job.url && <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>View Job →</a>}
+                    <div key={job.id} className="dash-card">
+                      <h3 className="dash-card-title">{job.title}</h3>
+                      <div className="dash-card-meta">{job.company} • {job.location}</div>
+                      <p className="dash-card-desc">{job.description?.substring(0, 200)}...</p>
+                      {job.url && <a href={job.url} target="_blank" rel="noopener noreferrer" className="dash-card-link">View Job →</a>}
                     </div>
                   )) : (
-                    <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                    <div className="dash-empty-state">
                       {jobSearch.query || jobSearch.location ? (
                         <p>No jobs found. Try different search terms.</p>
                       ) : (
@@ -417,26 +561,24 @@ export default function DashboardPage() {
                     <div className="section-head">
                       <div className="section-label">AI Assistant</div>
                       <h2 className="section-title">Career Guidance Chat</h2>
-                      <button onClick={createNewConversation} style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button onClick={createNewConversation} className="dash-action-btn">
                         <Plus size={18} /> New Chat
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gap: '16px' }}>
+                    <div className="dash-grid-list">
                       {conversations.length > 0 ? conversations.map((conv) => (
                         <div 
                           key={conv.id} 
                           onClick={() => setActiveConversationId(conv.id)}
-                          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                          className="dash-card dash-card-clickable"
                         >
-                          <h3 style={{ marginBottom: '8px' }}>{conv.title}</h3>
-                          <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+                          <h3 className="dash-card-title">{conv.title}</h3>
+                          <div className="dash-card-meta">
                             {new Date(conv.updated_at).toLocaleDateString()} • {conv.token_count || 0} tokens
                           </div>
                         </div>
                       )) : (
-                        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                        <div className="dash-empty-state">
                           <p>No conversations yet. Start a new chat to get AI-powered career guidance!</p>
                         </div>
                       )}
@@ -451,53 +593,53 @@ export default function DashboardPage() {
                 <div className="section-head">
                   <div className="section-label">Career Roadmaps</div>
                   <h2 className="section-title">Your Learning Path</h2>
-                  <button onClick={() => setShowRoadmapForm(!showRoadmapForm)} style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button onClick={() => setShowRoadmapForm(!showRoadmapForm)} className="dash-action-btn">
                     <Plus size={18} /> Create Roadmap
                   </button>
                 </div>
 
                 {showRoadmapForm && (
-                  <form onSubmit={createRoadmap} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-                    <h3 style={{ marginBottom: '16px' }}>Create New Roadmap</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <form onSubmit={createRoadmap} className="dash-card" style={{ marginBottom: '24px' }}>
+                    <h3 className="dash-card-title" style={{ marginBottom: '16px' }}>Create New Roadmap</h3>
+                    <div className="dash-form-stack">
                       <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Roadmap Title</label>
+                        <label className="dash-form-label">Roadmap Title</label>
                         <input
                           type="text"
                           value={roadmapForm.title}
                           onChange={(e) => setRoadmapForm({...roadmapForm, title: e.target.value})}
                           placeholder="e.g., Path to Senior Developer"
                           required
-                          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }}
+                          className="dash-input dash-input-full"
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Target Role</label>
+                        <label className="dash-form-label">Target Role</label>
                         <input
                           type="text"
                           value={roadmapForm.targetRole}
                           onChange={(e) => setRoadmapForm({...roadmapForm, targetRole: e.target.value})}
                           placeholder="e.g., Senior Software Engineer"
                           required
-                          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }}
+                          className="dash-input dash-input-full"
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Description</label>
+                        <label className="dash-form-label">Description</label>
                         <textarea
                           value={roadmapForm.description}
                           onChange={(e) => setRoadmapForm({...roadmapForm, description: e.target.value})}
                           placeholder="Describe your goals and what you want to achieve..."
                           rows={3}
-                          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', resize: 'vertical' }}
+                          className="dash-textarea"
                         />
                       </div>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button type="submit" disabled={loadingRoadmap} style={{ padding: '12px 24px', borderRadius: '8px', background: 'var(--accent)', color: 'white', border: 'none', cursor: loadingRoadmap ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {loadingRoadmap ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                      <div className="dash-form-actions">
+                        <button type="submit" disabled={loadingRoadmap} className="dash-action-btn">
+                          {loadingRoadmap ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <Plus size={18} />}
                           Generate Roadmap
                         </button>
-                        <button type="button" onClick={() => setShowRoadmapForm(false)} style={{ padding: '12px 24px', borderRadius: '8px', background: 'var(--border)', color: 'var(--text)', border: 'none', cursor: 'pointer' }}>
+                        <button type="button" onClick={() => setShowRoadmapForm(false)} className="dash-cancel-btn">
                           Cancel
                         </button>
                       </div>
@@ -505,33 +647,52 @@ export default function DashboardPage() {
                   </form>
                 )}
 
-                <div style={{ display: 'grid', gap: '16px' }}>
+                <div className="dash-grid-list">
                   {roadmaps.length > 0 ? roadmaps.map((roadmap) => (
-                    <div key={roadmap.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
-                      <h3 style={{ marginBottom: '8px' }}>{roadmap.title}</h3>
-                      <div style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>Target: {roadmap.target_role}</div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <div style={{ background: 'var(--border)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ background: 'var(--accent)', height: '100%', width: `${roadmap.progress}%` }}></div>
+                    <div key={roadmap.id} className="dash-card">
+                      <h3 className="dash-card-title">{roadmap.title}</h3>
+                      <div className="dash-card-meta">Target: {roadmap.target_role}</div>
+                      <div className="dash-progress-wrap">
+                        <div className="dash-progress-track">
+                          <div className="dash-progress-fill" style={{ width: `${roadmap.progress}%` }}></div>
                         </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{roadmap.progress}% Complete</div>
+                        <div className="dash-progress-label">{roadmap.progress}% Complete</div>
                       </div>
-                      {roadmap.description && <div style={{ fontSize: '14px', marginBottom: '12px' }}>{roadmap.description}</div>}
+                      {roadmap.description && <p className="dash-card-desc">{roadmap.description}</p>}
                       {roadmap.milestones && roadmap.milestones.length > 0 && (
-                        <div style={{ marginTop: '16px' }}>
-                          <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Milestones:</h4>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {roadmap.milestones.map((milestone: any, idx: number) => (
-                              <div key={idx} style={{ fontSize: '13px', padding: '8px', background: 'var(--bg)', borderRadius: '6px' }}>
-                                • {milestone.title}
-                              </div>
-                            ))}
+                        <div className="roadmap-timeline">
+                          <h4 className="dash-milestones-title">Milestones</h4>
+                          <div className="timeline-track">
+                            {roadmap.milestones.map((milestone: any, idx: number) => {
+                              const total = roadmap.milestones.length
+                              const isCompleted = roadmap.progress > 0 && idx < Math.round((roadmap.progress / 100) * total)
+                              const isCurrent = roadmap.progress > 0 && idx === Math.round((roadmap.progress / 100) * total)
+                              return (
+                                <div 
+                                  key={idx} 
+                                  className={`timeline-node ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
+                                  style={{ animationDelay: `${idx * 0.15}s` }}
+                                >
+                                  <div className="timeline-dot-col">
+                                    <div className="timeline-dot">
+                                      {isCompleted && (
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="timeline-content">
+                                    <div className="timeline-label">{milestone.title}</div>
+                                    {milestone.description && <div className="timeline-desc">{milestone.description}</div>}
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
                     </div>
                   )) : (
-                    <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                    <div className="dash-empty-state">
                       <p>No roadmaps yet. Create one to plan your career journey!</p>
                     </div>
                   )}
@@ -546,10 +707,10 @@ export default function DashboardPage() {
                   <h2 className="section-title">Your Resumes</h2>
                 </div>
 
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '64px 32px', textAlign: 'center' }}>
+                <div className="dash-empty-state" style={{ padding: '64px 32px' }}>
                   <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
-                  <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>Feature Under Development</h3>
-                  <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto', lineHeight: 1.6 }}>
+                  <h3 className="dash-card-title" style={{ marginBottom: '8px' }}>Feature Under Development</h3>
+                  <p>
                     We're working hard to bring you AI-powered resume analysis. This feature will be available soon!
                   </p>
                 </div>
@@ -561,27 +722,27 @@ export default function DashboardPage() {
                 <div className="section-head">
                   <div className="section-label">Career Recommendations</div>
                   <h2 className="section-title">Personalized Career Paths</h2>
-                  <button onClick={generateRecommendations} disabled={loadingRecommendations} style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {loadingRecommendations ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                  <button onClick={generateRecommendations} disabled={loadingRecommendations} className="dash-action-btn">
+                    {loadingRecommendations ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <Plus size={18} />}
                     Generate New
                   </button>
                 </div>
-                <div style={{ display: 'grid', gap: '16px' }}>
+                <div className="dash-grid-list">
                   {recommendations.length > 0 ? recommendations.map((rec) => (
-                    <div key={rec.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                        <h3>{rec.title}</h3>
-                        <div style={{ background: 'var(--accent)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: 600 }}>
+                    <div key={rec.id} className="dash-card">
+                      <div className="dash-card-header-row">
+                        <h3 className="dash-card-title">{rec.title}</h3>
+                        <div className="dash-match-badge">
                           {rec.match_score}% Match
                         </div>
                       </div>
-                      <p style={{ marginBottom: '16px', color: 'var(--text-muted)' }}>{rec.description}</p>
-                      {rec.avg_salary && <div style={{ fontSize: '14px', marginBottom: '8px' }}>💰 Avg Salary: ${rec.avg_salary.toLocaleString()}</div>}
-                      {rec.time_to_ready && <div style={{ fontSize: '14px', marginBottom: '8px' }}>⏱️ Time to Ready: {rec.time_to_ready}</div>}
-                      {rec.growth_outlook && <div style={{ fontSize: '14px' }}>📈 Growth: {rec.growth_outlook}</div>}
+                      <p className="dash-card-desc">{rec.description}</p>
+                      {rec.avg_salary && <div className="dash-card-detail">💰 Avg Salary: ${rec.avg_salary.toLocaleString()}</div>}
+                      {rec.time_to_ready && <div className="dash-card-detail">⏱️ Time to Ready: {rec.time_to_ready}</div>}
+                      {rec.growth_outlook && <div className="dash-card-detail">📈 Growth: {rec.growth_outlook}</div>}
                     </div>
                   )) : (
-                    <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                    <div className="dash-empty-state">
                       <p>No recommendations yet. Click "Generate New" to get AI-powered career suggestions!</p>
                     </div>
                   )}
