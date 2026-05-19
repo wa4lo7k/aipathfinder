@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans, Inter } from 'next/font/google'
 import './globals.css'
 
@@ -18,6 +18,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Pathfinder-AI — Your AI Career Companion',
   description: 'Pathfinder-AI — Your AI-powered career companion. Personalized career guidance, job matching, and skill development.',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({

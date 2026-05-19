@@ -258,7 +258,7 @@ export default function DashboardPage() {
       <div className="dash-layout">
         <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-top">
-            <Link href="/" className="nav-logo sidebar-logo">Pathfinder<span>AI</span></Link>
+            <span className="nav-logo sidebar-logo">Pathfinder<span>AI</span></span>
           </div>
           <nav className="sidebar-nav">
             {navItems.map((item) => {

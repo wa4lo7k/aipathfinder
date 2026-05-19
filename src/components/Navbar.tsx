@@ -5,6 +5,8 @@ import Link from 'next/link'
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  const closeMenu = () => setMobileMenuOpen(false)
+
   return (
     <nav className="nav" role="navigation" aria-label="Main navigation">
       <div className="nav-inner">
@@ -19,7 +21,7 @@ export default function Navbar() {
           <Link href="/dashboard" className="nav-cta" role="menuitem">Dashboard</Link>
         </div>
         <button 
-          className="hamburger" 
+          className={`hamburger${mobileMenuOpen ? ' open' : ''}`}
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label="Toggle menu" 
           aria-expanded={mobileMenuOpen}
@@ -27,15 +29,13 @@ export default function Navbar() {
           <span></span><span></span><span></span>
         </button>
       </div>
-      {mobileMenuOpen && (
-        <div className="mobile-menu" aria-hidden="false">
-          <Link href="#hero-sec">Home</Link>
-          <Link href="#reasons-sec">Why Us</Link>
-          <Link href="#how-it-works-sec">How It Works</Link>
-          <Link href="#features-sec">Features</Link>
-          <Link href="/dashboard" className="mobile-cta">Go to Dashboard →</Link>
-        </div>
-      )}
+      <div className={`mobile-menu${mobileMenuOpen ? ' open' : ''}`} aria-hidden={!mobileMenuOpen}>
+        <Link href="#hero-sec" onClick={closeMenu}>Home</Link>
+        <Link href="#reasons-sec" onClick={closeMenu}>Why Us</Link>
+        <Link href="#how-it-works-sec" onClick={closeMenu}>How It Works</Link>
+        <Link href="#features-sec" onClick={closeMenu}>Features</Link>
+        <Link href="/dashboard" className="mobile-cta" onClick={closeMenu}>Go to Dashboard →</Link>
+      </div>
     </nav>
   )
 }
