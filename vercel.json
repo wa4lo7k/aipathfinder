@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "functions": {
+    "src/app/api/conversations/[id]/messages/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/career-recommendations/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/roadmaps/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/resumes/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/resumes/analyze/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/inspect-resume/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/edge/:path*",
+      "destination": "${NEXT_PUBLIC_SUPABASE_URL}/functions/v1/:path*"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
+    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "GEMINI_API_KEY": "@gemini_api_key",
+    "GEMINI_MODEL": "@gemini_model",
+    "GROQ_API_KEY": "@groq_api_key",
+    "GROQ_MODEL": "@groq_model",
+    "RAPIDAPI_KEY": "@rapidapi_key",
+    "RAPIDAPI_HOST": "@rapidapi_host"
+  }
+}
