@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createApiSupabaseClient } from '@/lib/supabase'
 import { handleApiError, ApiError, ErrorCode } from '@/lib/errors'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
@@ -19,8 +19,8 @@ interface ResumeAnalysis {
 }
 
 export async function POST(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -190,14 +190,14 @@ Output pure JSON only. Do NOT wrap in markdown code blocks.`
       throw new ApiError(dbError.message, ErrorCode.DB_ERROR, 500)
     }
 
-    return NextResponse.json({ 
+    return applyCookies(NextResponse.json({ 
       data: resume,
       analysis,
       message: 'Resume analyzed successfully with Gemini 1.5 Flash'
-    }, { status: 201 })
+    }, { status: 201 }))
 
   } catch (error) {
     const { error: errMsg, code, status } = handleApiError(error)
-    return NextResponse.json({ error: errMsg, code }, { status })
+    return applyCookies(NextResponse.json({ error: errMsg, code }, { status }))
   }
 }

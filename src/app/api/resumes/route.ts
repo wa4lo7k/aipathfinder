@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createApiSupabaseClient } from '@/lib/supabase'
 import { ResumeUploadSchema } from '@/lib/validations'
 import { handleApiError, ApiError, ErrorCode } from '@/lib/errors'
 
@@ -7,8 +7,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function GET(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -25,16 +25,16 @@ export async function GET(request: NextRequest) {
       throw new ApiError(error.message, ErrorCode.DB_ERROR, 500)
     }
 
-    return NextResponse.json({ data: data || [] })
+    return applyCookies(NextResponse.json({ data: data || [] }))
   } catch (error) {
     const { error: errMsg, code, status } = handleApiError(error)
-    return NextResponse.json({ error: errMsg, code }, { status })
+    return applyCookies(NextResponse.json({ error: errMsg, code }, { status }))
   }
 }
 
 export async function POST(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ data: resume }, { status: 201 })
+    return applyCookies(NextResponse.json({ data: resume }, { status: 201 }))
   } catch (error) {
     const { error: errMsg, code, status } = handleApiError(error)
-    return NextResponse.json({ error: errMsg, code }, { status })
+    return applyCookies(NextResponse.json({ error: errMsg, code }, { status }))
   }
 }

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createApiSupabaseClient } from '@/lib/supabase'
 
 // Initialize Google GenAI with API key
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
@@ -52,6 +52,7 @@ function fileToDataPart(buffer: Buffer, mimeType: string) {
  * Accepts FormData with file and prompt
  */
 export async function POST(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
     // Check if AI is initialized
     if (!ai) {
@@ -62,14 +63,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate user (optional but recommended)
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json(
+      return applyCookies(NextResponse.json(
         { error: 'Unauthorized. Please log in.' },
         { status: 401 }
-      )
+      ))
     }
 
     // Parse FormData
@@ -237,7 +237,7 @@ Be specific, constructive, and professional in your feedback.`
     // ============================================================
 
     // Return successful response
-    return NextResponse.json({
+    return applyCookies(NextResponse.json({
       success: true,
       data: result,
       metadata: {
@@ -247,7 +247,7 @@ Be specific, constructive, and professional in your feedback.`
         model: GEMINI_MODEL,
         timestamp: new Date().toISOString(),
       },
-    })
+    }))
 
   } catch (error: any) {
     console.error('Error inspecting resume:', error)

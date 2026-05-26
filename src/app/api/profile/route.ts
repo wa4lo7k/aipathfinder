@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createApiSupabaseClient } from '@/lib/supabase'
 import { ProfileUpdateSchema } from '@/lib/validations'
 import { handleApiError, ApiError, ErrorCode } from '@/lib/errors'
 
 export async function GET(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -26,16 +26,16 @@ export async function GET(request: NextRequest) {
       throw new ApiError('Profile not found', ErrorCode.NOT_FOUND, 404)
     }
 
-    return NextResponse.json({ data: profile })
+    return applyCookies(NextResponse.json({ data: profile }))
   } catch (error) {
     const { error: errMsg, code, status } = handleApiError(error)
-    return NextResponse.json({ error: errMsg, code }, { status })
+    return applyCookies(NextResponse.json({ error: errMsg, code }, { status }))
   }
 }
 
 export async function PUT(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -60,9 +60,9 @@ export async function PUT(request: NextRequest) {
       throw new ApiError('Profile not found', ErrorCode.NOT_FOUND, 404)
     }
 
-    return NextResponse.json({ data: profile })
+    return applyCookies(NextResponse.json({ data: profile }))
   } catch (error) {
     const { error: errMsg, code, status } = handleApiError(error)
-    return NextResponse.json({ error: errMsg, code }, { status })
+    return applyCookies(NextResponse.json({ error: errMsg, code }, { status }))
   }
 }

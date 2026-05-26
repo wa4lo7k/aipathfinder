@@ -1,5 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr'
-import { createServerClient } from '@supabase/ssr'
+import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -41,6 +40,51 @@ export function createServerSupabaseClient() {
       },
     },
   })
+}
+
+// ── API Route client (reliable cookie propagation to response) ──────────────
+// Use this in Route Handlers (API routes) to ensure cookie mutations from
+// Supabase auth (e.g. token refresh) are reliably propagated to the response.
+// Usage:
+//   const { supabase, applyCookies } = createApiSupabaseClient(request)
+//   ...
+//   return applyCookies(NextResponse.json({ data }))
+export function createApiSupabaseClient(request: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) {
+    throw new Error('Missing Supabase URL or Anon Key in environment variables')
+  }
+
+  const pendingCookies: Array<{
+    name: string
+    value: string
+    options: Record<string, unknown>
+  }> = []
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      get(name: string) {
+        return request.cookies.get(name)?.value
+      },
+      set(name: string, value: string, options: Record<string, unknown>) {
+        pendingCookies.push({ name, value, options })
+        request.cookies.set({ name, value, ...(options as any) })
+      },
+      remove(_name: string, _options: Record<string, unknown>) {
+        // no-op — API routes must never clear auth cookies
+      },
+    },
+  })
+
+  function applyCookies(response: NextResponse): NextResponse {
+    for (const { name, value, options } of pendingCookies) {
+      response.cookies.set({ name, value, ...(options as any) })
+    }
+    return response
+  }
+
+  return { supabase, applyCookies }
 }
 
 // ── Middleware client (returns cookie-aware response) ──────────────────────────

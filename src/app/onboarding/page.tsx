@@ -142,7 +142,7 @@ export default function OnboardingPage() {
   const finish = async () => {
     setLoading(true)
     try {
-      await fetch('/api/profile', {
+      const res = await fetch('/api/profile', {
         method:'PUT', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           first_name: data.firstName, last_name: data.lastName, role,
@@ -151,6 +151,10 @@ export default function OnboardingPage() {
           skills: data.skills.length > 0 ? data.skills : data.jobSeekerSkills.length > 0 ? data.jobSeekerSkills : undefined,
         })
       })
+      if (!res.ok) {
+        console.error('Failed to save profile, staying on onboarding')
+        return
+      }
       router.push('/setup')
     } catch (e) { console.error(e) }
     finally { setLoading(false) }

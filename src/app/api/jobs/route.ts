@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createApiSupabaseClient } from '@/lib/supabase'
 import { JobSearchSchema } from '@/lib/validations'
 import { handleApiError, ApiError, ErrorCode } from '@/lib/errors'
 import { searchJobs } from '@/lib/rapidapi'
@@ -36,8 +36,8 @@ function mapJSearchToJob(row: any, source = 'jsearch') {
 }
 
 export async function GET(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -94,32 +94,32 @@ export async function GET(request: NextRequest) {
           if (upsertErr) console.error('Failed to upsert jobs:', upsertErr.message)
         }
         
-        return NextResponse.json({
+        return applyCookies(NextResponse.json({
           data: normalized,
           page,
           total: result?.parameters?.num_pages ? result.parameters.num_pages * 10 : normalized.length,
           source: 'api',
-        })
+        }))
       } catch (apiError) {
         console.error('RapidAPI search failed:', apiError)
         // If API fails but we have some cached jobs, return them, else throw
         if (jobs.length > 0) {
-           return NextResponse.json({ data: jobs, page, source: 'cache_fallback' })
+           return applyCookies(NextResponse.json({ data: jobs, page, source: 'cache_fallback' }))
         }
         throw new ApiError('Failed to search jobs', ErrorCode.EXTERNAL_API_ERROR, 502)
       }
     }
 
-    return NextResponse.json({ data: jobs, page, source: 'cache' })
+    return applyCookies(NextResponse.json({ data: jobs, page, source: 'cache' }))
   } catch (error) {
     const { error: errMsg, code, status } = handleApiError(error)
-    return NextResponse.json({ error: errMsg, code }, { status })
+    return applyCookies(NextResponse.json({ error: errMsg, code }, { status }))
   }
 }
 
 export async function POST(request: NextRequest) {
+  const { supabase, applyCookies } = createApiSupabaseClient(request)
   try {
-    const supabase = createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -141,14 +141,14 @@ export async function POST(request: NextRequest) {
       if (upsertErr) console.error('Failed to upsert jobs:', upsertErr.message)
     }
 
-    return NextResponse.json({
+    return applyCookies(NextResponse.json({
       data: normalized,
       page: parsed.page,
       total: result?.parameters?.num_pages ? result.parameters.num_pages * 10 : normalized.length,
       source: 'api',
-    })
+    }))
   } catch (error) {
     const { error: errMsg, code, status } = handleApiError(error)
-    return NextResponse.json({ error: errMsg, code }, { status })
+    return applyCookies(NextResponse.json({ error: errMsg, code }, { status }))
   }
 }

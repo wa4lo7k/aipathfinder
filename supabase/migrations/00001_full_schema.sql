@@ -5,6 +5,21 @@
 -- ============================================================================
 
 -- =============================================================================
+-- 0. WIPE EXISTING USER DATA
+-- =============================================================================
+-- Order matters: child tables first, then auth.users (cascades to profiles)
+TRUNCATE TABLE skill_progress CASCADE;
+TRUNCATE TABLE job_applications CASCADE;
+TRUNCATE TABLE messages CASCADE;
+TRUNCATE TABLE conversations CASCADE;
+TRUNCATE TABLE career_recommendations CASCADE;
+TRUNCATE TABLE roadmaps CASCADE;
+TRUNCATE TABLE resume_inspections CASCADE;
+TRUNCATE TABLE resumes CASCADE;
+TRUNCATE TABLE jobs CASCADE;
+DELETE FROM auth.users;
+
+-- =============================================================================
 -- 1. EXTENSIONS
 -- =============================================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -220,21 +235,6 @@ CREATE TABLE IF NOT EXISTS resume_inspections (
   model_used TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- =============================================================================
--- 3b. WIPE EXISTING USER DATA
--- =============================================================================
--- Order matters: child tables first, then auth.users (cascades to profiles)
-TRUNCATE TABLE skill_progress CASCADE;
-TRUNCATE TABLE job_applications CASCADE;
-TRUNCATE TABLE messages CASCADE;
-TRUNCATE TABLE conversations CASCADE;
-TRUNCATE TABLE career_recommendations CASCADE;
-TRUNCATE TABLE roadmaps CASCADE;
-TRUNCATE TABLE resume_inspections CASCADE;
-TRUNCATE TABLE resumes CASCADE;
-TRUNCATE TABLE jobs CASCADE;
-DELETE FROM auth.users;
 
 -- =============================================================================
 -- 4. INDEXES
