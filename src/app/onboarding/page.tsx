@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Calendar } from 'lucide-react'
 
 interface OnboardingData {
   firstName: string; lastName: string; phone: string; dateOfBirth: string
@@ -24,10 +25,10 @@ interface OnboardingData {
 const SKILL_OPTIONS = ['JavaScript','TypeScript','Python','Java','C++','React','Node.js','SQL','Data Analysis','Machine Learning','UI/UX Design','Project Management','Cloud Computing','DevOps','Cybersecurity','Communication','Leadership','Writing','Public Speaking','Research','Critical Thinking','Problem Solving']
 const INTEREST_OPTIONS = ['Web Development','Mobile Apps','AI/ML','Data Science','Cybersecurity','Cloud','DevOps','Design','Product','Entrepreneurship','Open Source','Tech Writing','Teaching','Gaming','Blockchain','IoT']
 const CAREER_PATHS = [
-  {title:'Software Engineering',icon:'💻',desc:'Build applications and systems'},{title:'Data Science',icon:'📊',desc:'Analyze data for insights'},
-  {title:'Product Management',icon:'📋',desc:'Lead product development'},{title:'UX Design',icon:'🎨',desc:'Design user experiences'},
-  {title:'DevOps',icon:'⚙️',desc:'Manage infrastructure and deployments'},{title:'Machine Learning',icon:'🤖',desc:'Build AI and ML systems'},
-  {title:'Cybersecurity',icon:'🔒',desc:'Protect systems and data'},{title:'Cloud Architecture',icon:'☁️',desc:'Design cloud solutions'},
+  {title:'Software Engineering',desc:'Build applications and systems'},{title:'Data Science',desc:'Analyze data for insights'},
+  {title:'Product Management',desc:'Lead product development'},{title:'UX Design',desc:'Design user experiences'},
+  {title:'DevOps',desc:'Manage infrastructure and deployments'},{title:'Machine Learning',desc:'Build AI and ML systems'},
+  {title:'Cybersecurity',desc:'Protect systems and data'},{title:'Cloud Architecture',desc:'Design cloud solutions'},
 ]
 const EMPLOYMENT_STATUSES = ['employed','unemployed','freelancing','open_to_work']
 const LEARNING_STYLES = ['visual','auditory','reading','kinesthetic']
@@ -43,6 +44,19 @@ const INITIAL: OnboardingData = {
   jobSeekerSkills:[],languages:'',
   desiredTitles:'',desiredIndustries:'',desiredLocations:'',remotePreference:'',
   expectedSalaryMin:'',expectedSalaryMax:'',currency:'USD',linkedinUrl:'',portfolioUrl:'',
+}
+
+function DateInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
+  return (
+    <div className="form-group date-picker-wrap">
+      <label>Date of Birth</label>
+      <div className="date-input-container">
+        <Calendar size={18} className="date-input-icon" />
+        <input type="date" value={value} onChange={e => onChange(e.target.value)} className="date-picker-input" />
+      </div>
+      {error && <span className="field-error">{error}</span>}
+    </div>
+  )
 }
 
 export default function OnboardingPage() {
@@ -171,13 +185,13 @@ export default function OnboardingPage() {
             </div>
             <div className="role-cards">
               <div className="role-card role-student" onClick={()=>handleRoleSelect('student')} tabIndex={0} onKeyDown={e=>e.key==='Enter'&&handleRoleSelect('student')}>
-                <div className="role-card-icon">🎓</div><h3>Student</h3>
+                <h3>Student</h3>
                 <p>I'm exploring career options and need guidance on my future path.</p>
                 <div className="role-card-features"><span>✓ Career Recommendations</span><span>✓ Degree Suggestions</span><span>✓ University Finder</span><span>✓ AI Guidance</span></div>
                 <div className="role-card-cta">Choose Student →</div>
               </div>
               <div className="role-card role-jobseeker" onClick={()=>handleRoleSelect('jobseeker')} tabIndex={0} onKeyDown={e=>e.key==='Enter'&&handleRoleSelect('jobseeker')}>
-                <div className="role-card-icon">💼</div><h3>Job Seeker</h3>
+                <h3>Job Seeker</h3>
                 <p>I'm actively looking for opportunities and need smart matching.</p>
                 <div className="role-card-features"><span>✓ Smart Job Matching</span><span>✓ LinkedIn Jobs</span><span>✓ Remote Opportunities</span><span>✓ AI Assistance</span></div>
                 <div className="role-card-cta">Choose Job Seeker →</div>
@@ -213,7 +227,7 @@ export default function OnboardingPage() {
             <div className="form-grid">
               <div className="form-group"><label>First Name</label><input type="text" placeholder="John" value={data.firstName} onChange={e=>upd({firstName:e.target.value})} />{errors.firstName&&<span className="field-error">{errors.firstName}</span>}</div>
               <div className="form-group"><label>Last Name</label><input type="text" placeholder="Doe" value={data.lastName} onChange={e=>upd({lastName:e.target.value})} />{errors.lastName&&<span className="field-error">{errors.lastName}</span>}</div>
-              <div className="form-group"><label>Date of Birth</label><input type="date" value={data.dateOfBirth} onChange={e=>upd({dateOfBirth:e.target.value})} />{errors.dateOfBirth&&<span className="field-error">{errors.dateOfBirth}</span>}</div>
+              <DateInput value={data.dateOfBirth} onChange={v=>upd({dateOfBirth:v})} error={errors.dateOfBirth} />
               <div className="form-group"><label>Gender</label><select value={data.gender} onChange={e=>upd({gender:e.target.value})}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="non-binary">Non-binary</option><option value="prefer-not">Prefer not to say</option></select>{errors.gender&&<span className="field-error">{errors.gender}</span>}</div>
               <div className="form-group full"><label>Nationality</label><input type="text" placeholder="e.g., American" value={data.nationality} onChange={e=>upd({nationality:e.target.value})} />{errors.nationality&&<span className="field-error">{errors.nationality}</span>}</div>
             </div>
@@ -241,7 +255,7 @@ export default function OnboardingPage() {
           {role === 'student' && step === 4 && (
             <><h2>Career Goals</h2><p className="pf-sub">Select up to 3 career paths that interest you</p>
             <div className="selection-counter">{data.preferredCareerPaths.length}/3 selected</div>
-            <div className="career-path-grid">{CAREER_PATHS.map(p=><button key={p.title} type="button" className={`career-path-card ${data.preferredCareerPaths.includes(p.title)?'active':''}`} onClick={()=>togglePath(p.title)}><div className="career-path-icon">{p.icon}</div><div className="career-path-title">{p.title}</div><div className="career-path-desc">{p.desc}</div></button>)}</div>
+            <div className="career-path-grid">{CAREER_PATHS.map(p=><button key={p.title} type="button" className={`career-path-card ${data.preferredCareerPaths.includes(p.title)?'active':''}`} onClick={()=>togglePath(p.title)}><div className="career-path-title">{p.title}</div><div className="career-path-desc">{p.desc}</div></button>)}</div>
             <button onClick={next} className="btn-auth" disabled={loading}><span className="btn-text">Next →</span></button></>
           )}
           {role === 'student' && step === 5 && (
@@ -260,7 +274,7 @@ export default function OnboardingPage() {
               <div className="form-group"><label>First Name</label><input type="text" placeholder="John" value={data.firstName} onChange={e=>upd({firstName:e.target.value})} />{errors.firstName&&<span className="field-error">{errors.firstName}</span>}</div>
               <div className="form-group"><label>Last Name</label><input type="text" placeholder="Doe" value={data.lastName} onChange={e=>upd({lastName:e.target.value})} />{errors.lastName&&<span className="field-error">{errors.lastName}</span>}</div>
               <div className="form-group"><label>Phone</label><input type="tel" placeholder="+1 555-0000" value={data.phone} onChange={e=>upd({phone:e.target.value})} />{errors.phone&&<span className="field-error">{errors.phone}</span>}</div>
-              <div className="form-group"><label>Date of Birth</label><input type="date" value={data.dateOfBirth} onChange={e=>upd({dateOfBirth:e.target.value})} />{errors.dateOfBirth&&<span className="field-error">{errors.dateOfBirth}</span>}</div>
+              <DateInput value={data.dateOfBirth} onChange={v=>upd({dateOfBirth:v})} error={errors.dateOfBirth} />
               <div className="form-group"><label>Gender</label><select value={data.gender} onChange={e=>upd({gender:e.target.value})}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="non-binary">Non-binary</option><option value="prefer-not">Prefer not to say</option></select>{errors.gender&&<span className="field-error">{errors.gender}</span>}</div>
               <div className="form-group full"><label>Nationality</label><input type="text" placeholder="e.g., American" value={data.nationality} onChange={e=>upd({nationality:e.target.value})} />{errors.nationality&&<span className="field-error">{errors.nationality}</span>}</div>
             </div>

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { fileName, fileType, fileSize, fileContent } = body
+    const { fileName, fileType, fileSize, fileContent, permanentUrl } = body
 
     if (!fileName || !fileContent) {
       throw new ApiError('fileName and fileContent are required', ErrorCode.VALIDATION_ERROR, 400)
@@ -174,13 +174,13 @@ Output pure JSON only. Do NOT wrap in markdown code blocks.`
       .insert({
         user_id: user.id,
         title: fileName.replace(/\.[^/.]+$/, ''), // Remove file extension
-        file_url: fileUri, // Store Gemini file URI
+        file_url: permanentUrl || fileUri, // Prefer permanent Supabase Storage URL
         file_name: fileName,
         file_size: fileSize,
-        resume_text: `Analyzed with Gemini 1.5 Flash - File URI: ${fileUri}`,
+        resume_text: `Analyzed with Gemini - File URI: ${fileUri}`,
         status: 'analyzed',
         analysis,
-        ai_raw: { gemini_response: analyzeResult, file_uri: fileUri },
+        ai_raw: { gemini_response: analyzeResult, file_uri: fileUri, storage_url: permanentUrl },
       })
       .select()
       .single()

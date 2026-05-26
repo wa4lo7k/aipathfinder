@@ -76,6 +76,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   skills TEXT[] DEFAULT ARRAY[]::TEXT[],
   career_goals TEXT,
   experience_level TEXT,
+  onboarding_step INTEGER DEFAULT 0,
+  onboarding_completed BOOLEAN DEFAULT false,
+  onboarding_data JSONB DEFAULT '{}'::jsonb,
   profile_score INTEGER DEFAULT 0 CHECK (profile_score >= 0 AND profile_score <= 100),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

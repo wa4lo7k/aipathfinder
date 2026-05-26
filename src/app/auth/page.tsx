@@ -23,7 +23,8 @@ export default function AuthPage() {
     const formData = new FormData(form)
     const email = String(formData.get('email') || '').trim()
     const password = String(formData.get('password') || '')
-    const fullName = String(formData.get('fullName') || '').trim()
+    const firstName = String(formData.get('firstName') || '').trim()
+    const lastName = String(formData.get('lastName') || '').trim()
 
     const supabase = createBrowserSupabaseClient()
 
@@ -40,7 +41,11 @@ export default function AuthPage() {
           email,
           password,
           options: {
-            data: { first_name: fullName, last_name: '', role: 'student' },
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              role: 'student',
+            },
           },
         })
         if (signUpError) throw signUpError
@@ -126,10 +131,16 @@ export default function AuthPage() {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             {!isLogin && (
-              <div className="form-group">
-                <label>Full Name</label>
-                <input type="text" name="fullName" placeholder="Your full name" required={!isLogin} />
-              </div>
+              <>
+                <div className="form-group">
+                  <label>First Name</label>
+                  <input type="text" name="firstName" placeholder="Your first name" required={!isLogin} />
+                </div>
+                <div className="form-group">
+                  <label>Last Name</label>
+                  <input type="text" name="lastName" placeholder="Your last name" required={!isLogin} />
+                </div>
+              </>
             )}
             <div className="form-group">
               <label>Email Address</label>

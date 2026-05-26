@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { LayoutDashboard, Briefcase, Bot, Map, FileText, TrendingUp, Target, MessageSquare, Pencil, Search, Plus, Upload, GraduationCap, Compass, BookOpen, Zap } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import ChatInterface from '@/components/ChatInterface'
+import ResumeManager from '@/components/dashboard/ResumeManager'
 import OverviewStudent from '@/components/dashboard/OverviewStudent'
 import OverviewJobSeeker from '@/components/dashboard/OverviewJobSeeker'
 import { Skeleton, SkeletonCard, SkeletonStatCard, SkeletonSidebarItem } from '@/components/Skeleton'
@@ -591,18 +592,7 @@ export default function DashboardPage() {
 
             {activeSection === 'resume' && (
               <div className="section-inner">
-                <div className="section-head">
-                  <div className="section-label">Resume Management</div>
-                  <h2 className="section-title">Your Resumes</h2>
-                </div>
-
-                <div className="dash-empty-state" style={{ padding: '64px 32px' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
-                  <h3 className="dash-card-title" style={{ marginBottom: '8px' }}>Feature Under Development</h3>
-                  <p>
-                    We're working hard to bring you AI-powered resume analysis. This feature will be available soon!
-                  </p>
-                </div>
+                <ResumeManager />
               </div>
             )}
 
