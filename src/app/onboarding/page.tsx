@@ -140,6 +140,7 @@ export default function OnboardingPage() {
   }
 
   const finish = async () => {
+    if (!validate()) return
     setLoading(true)
     try {
       const res = await fetch('/api/profile', {
@@ -155,8 +156,15 @@ export default function OnboardingPage() {
         console.error('Failed to save profile, staying on onboarding')
         return
       }
+      
+      // Wait a bit to ensure the profile update is committed
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
       router.push('/setup')
-    } catch (e) { console.error(e) }
+    } catch (e) { 
+      console.error(e)
+      alert('Failed to complete onboarding. Please try again.')
+    }
     finally { setLoading(false) }
   }
 

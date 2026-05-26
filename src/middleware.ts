@@ -36,9 +36,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect authenticated users away from auth page to onboarding
+  // Redirect authenticated users away from auth page
   if (user && pathname === '/auth') {
-    return NextResponse.redirect(new URL('/onboarding', request.url))
+    // Check if user has completed onboarding
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', user.id)
+      .single()
+    
+    if (profile?.onboarding_completed) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    } else {
+      return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
   }
 
   if (user) {

@@ -33,11 +33,15 @@ export default function AuthPage() {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         if (signInError) throw signInError
 
+        // Refresh the session to ensure cookies are set
+        await supabase.auth.getSession()
+        
         // Always redirect to onboarding after login
         // Onboarding handles routing to dashboard based on chosen path
         router.push('/onboarding')
+        router.refresh()
       } else {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -46,14 +50,23 @@ export default function AuthPage() {
               last_name: lastName,
               role: 'student',
             },
+            emailRedirectTo: `${window.location.origin}/onboarding`,
           },
         })
         if (signUpError) throw signUpError
 
-        // After successful registration, switch to login tab with success message
-        form.reset()
-        setIsLogin(true)
-        setSuccessMsg('Account created successfully! Please log in with your credentials.')
+        // Check if email confirmation is required
+        if (signUpData?.user && !signUpData.session) {
+          // Email confirmation required
+          form.reset()
+          setIsLogin(true)
+          setSuccessMsg('Account created! Please check your email to confirm your account, then log in.')
+        } else {
+          // Auto-login after signup (if email confirmation is disabled)
+          form.reset()
+          setIsLogin(true)
+          setSuccessMsg('Account created successfully! Please log in with your credentials.')
+        }
       }
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.')
