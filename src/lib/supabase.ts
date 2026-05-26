@@ -34,12 +34,10 @@ export function createServerSupabaseClient() {
           // ignore if called from a Server Component where cookies() is read-only
         }
       },
-      remove(name: string, options: Record<string, unknown>) {
-        try {
-          cookieStore.set({ name, value: '', ...(options as any) })
-        } catch {
-          // ignore if called from a Server Component where cookies() is read-only
-        }
+      remove(_name: string, _options: Record<string, unknown>) {
+        // no-op — API routes must never clear auth cookies.
+        // Clearing them here would send a Set-Cookie header in the API response
+        // that can log the user out when parallel requests race on token refresh.
       },
     },
   })

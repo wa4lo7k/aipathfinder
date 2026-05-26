@@ -88,14 +88,12 @@ export default function DashboardPage() {
         return
       }
 
-      const [statsRes, profileRes, convRes, roadmapRes, resumeRes, recRes] = await Promise.all([
-        fetch('/api/dashboard/stats'),
-        fetch('/api/profile'),
-        fetch('/api/conversations'),
-        fetch('/api/roadmaps'),
-        fetch('/api/resumes'),
-        fetch('/api/career-recommendations'),
-      ])
+      const statsRes = await fetch('/api/dashboard/stats')
+      const profileRes = await fetch('/api/profile')
+      const convRes = await fetch('/api/conversations')
+      const roadmapRes = await fetch('/api/roadmaps')
+      const resumeRes = await fetch('/api/resumes')
+      const recRes = await fetch('/api/career-recommendations')
 
       if (statsRes.ok) {
         const statsData = await statsRes.json()

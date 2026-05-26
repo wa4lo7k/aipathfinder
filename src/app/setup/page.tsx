@@ -118,30 +118,26 @@ export default function SetupPage() {
         },
       ]
 
-      const promises = apiCalls.map(call => {
+      let completedWeight = 0
+      for (const call of apiCalls) {
         const startTime = Date.now()
         const minDuration = 600 + Math.random() * 900
         setCurrentLabel(tasks.find(t => t.id === call.id)?.label || 'Working…')
         setTaskStatus(call.id, 'running')
 
-        return call.fn().then(() => {
-          const elapsed = Date.now() - startTime
-          if (elapsed < minDuration) {
-            return new Promise<void>(resolve => setTimeout(() => { setTaskStatus(call.id, 'done'); resolve() }, minDuration - elapsed))
-          }
-          setTaskStatus(call.id, 'done')
-        }).catch(() => {
-          setTaskStatus(call.id, 'done')
-        })
-      })
+        try {
+          await call.fn()
+        } catch {
+          // ignore individual failures
+        }
 
-      let completedWeight = 0
-      for (const promise of promises) {
-        await promise
-        completedWeight = tasks.filter(t => t.status === 'done' || t.status === 'running').reduce((sum, t) => {
-          const task = tasks.find(tt => tt.id === t.id)
-          return sum + (task?.weight || 0)
-        }, 0)
+        const elapsed = Date.now() - startTime
+        if (elapsed < minDuration) {
+          await new Promise<void>(resolve => setTimeout(resolve, minDuration - elapsed))
+        }
+        setTaskStatus(call.id, 'done')
+
+        completedWeight += tasks.find(t => t.id === call.id)?.weight || 0
         setProgress(Math.min(completedWeight, 95))
       }
 
