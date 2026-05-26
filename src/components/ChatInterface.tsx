@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, ArrowLeft, Bot, User, Sparkles } from 'lucide-react'
+import { Send, ArrowLeft, Bot, User, Sparkles, Loader2 } from 'lucide-react'
+import { SkeletonChatBubble, Skeleton } from '@/components/Skeleton'
 
 interface Message {
   id: string
@@ -20,8 +21,10 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(true)
+  const [streamStarted, setStreamStarted] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const chatMessagesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadMessages()
@@ -57,6 +60,7 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
     const userMessage = input.trim()
     setInput('')
     setLoading(true)
+    setStreamStarted(false)
 
     const tempUserMsg: Message = {
       id: 'temp-' + Date.now(),
@@ -79,6 +83,7 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
           const reader = res.body?.getReader()
           const decoder = new TextDecoder()
           let assistantMessage = ''
+          let firstTokenReceived = false
 
           if (reader) {
             while (true) {
@@ -95,6 +100,10 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
                   try {
                     const parsed = JSON.parse(data)
                     if (parsed.content) {
+                      if (!firstTokenReceived) {
+                        firstTokenReceived = true
+                        setStreamStarted(true)
+                      }
                       assistantMessage += parsed.content
                       setMessages(prev => {
                         const newMessages = [...prev]
@@ -122,36 +131,34 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
         } else {
           await loadMessages()
         }
-      } else {
-        alert('Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Error sending message')
     } finally {
       setLoading(false)
-      inputRef.current?.focus()
     }
   }
 
   if (loadingMessages) {
     return (
-      <div className="chat-container">
+      <div className="chat-container" role="region" aria-label="AI Chat" aria-busy="true">
         <div className="chat-header">
-          <button onClick={onBack} className="chat-back-btn">
+          <button onClick={onBack} className="chat-back-btn" aria-label="Go back">
             <ArrowLeft size={20} />
           </button>
           <div className="chat-header-info">
             <div className="chat-ai-avatar"><Bot size={18} /></div>
             <div>
               <h3 className="chat-header-title">AI Career Assistant</h3>
-              <span className="chat-header-status">Loading...</span>
+              <span className="chat-header-status" aria-live="polite">Loading messages…</span>
             </div>
           </div>
         </div>
-        <div className="chat-messages">
-          <div className="chat-loading-state">
-            <div className="dot-flashing"><span></span><span></span><span></span></div>
+        <div className="chat-messages" ref={chatMessagesRef}>
+          <div style={{ padding: 16 }}>
+            <SkeletonChatBubble align="left" />
+            <SkeletonChatBubble align="right" />
+            <SkeletonChatBubble align="left" />
           </div>
         </div>
       </div>
@@ -159,19 +166,18 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
   }
 
   return (
-    <div className="chat-container">
-      {/* Header */}
+    <div className="chat-container" role="region" aria-label="AI Chat">
       <div className="chat-header">
-        <button onClick={onBack} className="chat-back-btn">
+        <button onClick={onBack} className="chat-back-btn" aria-label="Go back">
           <ArrowLeft size={20} />
         </button>
         <div className="chat-header-info">
           <div className="chat-ai-avatar"><Bot size={18} /></div>
           <div>
             <h3 className="chat-header-title">AI Career Assistant</h3>
-            <span className="chat-header-status">
-              {loading ? (
-                <>Thinking<span className="dot-flashing-inline"><span></span><span></span><span></span></span></>
+            <span className="chat-header-status" aria-live="polite">
+              {loading && !streamStarted ? (
+                <>Thinking</>
               ) : (
                 <>● Online</>
               )}
@@ -184,8 +190,7 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="chat-messages">
+      <div className="chat-messages" ref={chatMessagesRef} aria-live="polite">
         {messages.length === 0 ? (
           <div className="chat-welcome">
             <div className="chat-welcome-icon">
@@ -194,13 +199,13 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
             <h3>Hello! I'm your AI Career Assistant</h3>
             <p>Ask me about career paths, job search strategies, skill development, resume tips, or anything career-related!</p>
             <div className="chat-suggestions">
-              <button onClick={() => { setInput('What career paths match my skills?'); }} className="chat-suggestion-chip">
+              <button onClick={() => { setInput('What career paths match my skills?') }} className="chat-suggestion-chip">
                 🎯 Career paths for my skills
               </button>
-              <button onClick={() => { setInput('Help me improve my resume'); }} className="chat-suggestion-chip">
+              <button onClick={() => { setInput('Help me improve my resume') }} className="chat-suggestion-chip">
                 📄 Resume improvement tips
               </button>
-              <button onClick={() => { setInput('What skills should I learn next?'); }} className="chat-suggestion-chip">
+              <button onClick={() => { setInput('What skills should I learn next?') }} className="chat-suggestion-chip">
                 📚 Skills to learn next
               </button>
             </div>
@@ -222,12 +227,14 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
             </div>
           ))
         )}
-        {loading && (
-          <div className="chat-msg chat-msg-ai">
+        {loading && !streamStarted && (
+          <div className="chat-msg chat-msg-ai" aria-busy="true" role="status">
             <div className="chat-msg-avatar"><Bot size={16} /></div>
             <div className="chat-msg-content">
               <div className="chat-msg-bubble chat-typing-bubble">
-                <div className="dot-flashing"><span></span><span></span><span></span></div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '4px 0' }}>
+                  <Skeleton height={16} width={200} rounded="sm" />
+                </div>
               </div>
             </div>
           </div>
@@ -235,7 +242,6 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <form onSubmit={sendMessage} className="chat-input-bar">
         <div className="chat-input-wrap">
           <input
@@ -246,11 +252,13 @@ export default function ChatInterface({ conversationId, onBack }: ChatInterfaceP
             placeholder="Type your message..."
             disabled={loading}
             className="chat-input"
+            aria-label="Message input"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
             className="chat-send-btn"
+            aria-label="Send message"
           >
             <Send size={18} />
           </button>

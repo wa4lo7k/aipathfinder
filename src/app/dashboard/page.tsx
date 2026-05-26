@@ -6,14 +6,16 @@ import { useRouter } from 'next/navigation'
 import { LayoutDashboard, Briefcase, Bot, Map, FileText, TrendingUp, Target, MessageSquare, Pencil, Search, Plus, Upload, GraduationCap, Compass, BookOpen, Zap } from 'lucide-react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import ChatInterface from '@/components/ChatInterface'
+import OverviewStudent from '@/components/dashboard/OverviewStudent'
+import OverviewJobSeeker from '@/components/dashboard/OverviewJobSeeker'
+import { Skeleton, SkeletonCard, SkeletonStatCard, SkeletonSidebarItem } from '@/components/Skeleton'
 
 export default function DashboardPage() {
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [activeSection, setActiveSection] = useState('overview')
-  
-  // Data states
+
   const [stats, setStats] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -22,8 +24,7 @@ export default function DashboardPage() {
   const [roadmaps, setRoadmaps] = useState<any[]>([])
   const [resumes, setResumes] = useState<any[]>([])
   const [recommendations, setRecommendations] = useState<any[]>([])
-  
-  // UI states
+
   const [jobSearch, setJobSearch] = useState({ query: '', location: '' })
   const [loadingJobs, setLoadingJobs] = useState(false)
   const [loadingRecommendations, setLoadingRecommendations] = useState(false)
@@ -56,8 +57,22 @@ export default function DashboardPage() {
     return items
   }, [isStudent, isJobSeeker])
 
-  // Fetch all data on mount
   useEffect(() => {
+    const setupData = sessionStorage.getItem('setupData')
+    if (setupData) {
+      try {
+        const parsed = JSON.parse(setupData)
+        if (parsed.profile) setProfile(parsed.profile)
+        if (parsed.stats) setStats(parsed.stats)
+        if (parsed.roadmaps) setRoadmaps(parsed.roadmaps)
+        if (parsed.jobs) setJobs(parsed.jobs)
+        if (parsed.conversations) setConversations(parsed.conversations)
+        if (parsed.recommendations) setRecommendations(parsed.recommendations)
+        sessionStorage.removeItem('setupData')
+      } catch (e) {
+        console.error('Error parsing setup data:', e)
+      }
+    }
     fetchDashboardData()
   }, [])
 
@@ -66,63 +81,58 @@ export default function DashboardPage() {
       setLoading(true)
       const supabase = createBrowserSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       if (!user) {
         router.push('/auth')
         return
       }
 
-      // Fetch stats
-      const statsRes = await fetch('/api/dashboard/stats')
+      const [statsRes, profileRes, convRes, roadmapRes, resumeRes, recRes] = await Promise.all([
+        fetch('/api/dashboard/stats'),
+        fetch('/api/profile'),
+        fetch('/api/conversations'),
+        fetch('/api/roadmaps'),
+        fetch('/api/resumes'),
+        fetch('/api/career-recommendations'),
+      ])
+
       if (statsRes.ok) {
         const statsData = await statsRes.json()
-        setStats(statsData.data)
+        if (!stats) setStats(statsData.data)
       }
 
-      // Fetch profile and check onboarding completion
-      const profileRes = await fetch('/api/profile')
       if (profileRes.ok) {
         const profileData = await profileRes.json()
         const prof = profileData.data
-        setProfile(prof)
+        if (!profile) setProfile(prof)
 
-        // Redirect to onboarding if profile is incomplete
-        if (!prof?.role || !prof?.first_name) {
+        if (!prof?.onboarding_completed) {
           router.push('/onboarding')
           return
         }
       } else {
-        // Can't fetch profile — redirect to onboarding
         router.push('/onboarding')
         return
       }
 
-      // Fetch conversations
-      const convRes = await fetch('/api/conversations')
       if (convRes.ok) {
         const convData = await convRes.json()
-        setConversations(convData.data || [])
+        if (conversations.length === 0) setConversations(convData.data || [])
       }
 
-      // Fetch roadmaps
-      const roadmapRes = await fetch('/api/roadmaps')
       if (roadmapRes.ok) {
         const roadmapData = await roadmapRes.json()
-        setRoadmaps(roadmapData.data || [])
+        if (roadmaps.length === 0) setRoadmaps(roadmapData.data || [])
       }
 
-      // Fetch resumes
-      const resumeRes = await fetch('/api/resumes')
       if (resumeRes.ok) {
         const resumeData = await resumeRes.json()
-        setResumes(resumeData.data || [])
+        if (resumes.length === 0) setResumes(resumeData.data || [])
       }
 
-      // Fetch career recommendations
-      const recRes = await fetch('/api/career-recommendations')
       if (recRes.ok) {
         const recData = await recRes.json()
-        setRecommendations(recData.data || [])
+        if (recommendations.length === 0) setRecommendations(recData.data || [])
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -138,7 +148,7 @@ export default function DashboardPage() {
       const params = new URLSearchParams()
       if (jobSearch.query) params.append('query', jobSearch.query)
       if (jobSearch.location) params.append('location', jobSearch.location)
-      
+
       const res = await fetch(`/api/jobs?${params}`)
       if (res.ok) {
         const data = await res.json()
@@ -155,7 +165,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Auto-search when section changes to jobs
   useEffect(() => {
     if (activeSection === 'jobs' && jobs.length === 0) {
       searchJobs()
@@ -169,7 +178,7 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json()
         alert('Career recommendations generated successfully!')
-        await fetchDashboardData() // Refresh all data
+        await fetchDashboardData()
       } else {
         const errorData = await res.json().catch(() => ({ error: 'Failed to generate recommendations' }))
         alert(errorData.error || 'Failed to generate recommendations. Please try again.')
@@ -237,17 +246,36 @@ export default function DashboardPage() {
 
   const initials = profile?.first_name?.[0]?.toUpperCase() + (profile?.last_name?.[0]?.toUpperCase() || '') || 'U'
 
-  if (loading) {
+  if (loading && !profile) {
     return (
-      <div className="dash-full-loader">
-        <div className="dot-flashing"><span></span><span></span><span></span></div>
+      <div className="dash-full-loader" style={{ flexDirection: 'column', gap: 0 }}>
+        <div className="dash-layout" style={{ minHeight: '100vh' }}>
+          <aside style={{
+            width: 'var(--sidebar-w)', flexShrink: 0,
+            background: 'var(--surface)', borderRight: '1px solid var(--border)',
+            display: 'flex', flexDirection: 'column', padding: '22px 12px 20px',
+          }}>
+            <div style={{ margin: '0 8px 24px' }}><Skeleton height={20} width={120} rounded="sm" /></div>
+            {Array.from({ length: 5 }).map((_, i) => <SkeletonSidebarItem key={i} />)}
+          </aside>
+          <main style={{ flex: 1, padding: '36px 40px' }}>
+            <div style={{ marginBottom: 8 }}><Skeleton height={32} width={250} rounded="sm" /></div>
+            <div style={{ marginBottom: 32 }}><Skeleton height={16} width={180} rounded="sm" /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 18, marginBottom: 32 }}>
+              {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 18 }}>
+              {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          </main>
+        </div>
       </div>
     )
   }
 
   return (
     <div id="page-dashboard" className="page active">
-      <button 
+      <button
         className={`hamburger sidebar-hamburger ${sidebarOpen ? 'open' : ''}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
@@ -277,7 +305,7 @@ export default function DashboardPage() {
           </nav>
           <div className="sidebar-bottom">
             <div className="sidebar-user-wrap">
-              <button 
+              <button
                 className="sidebar-user"
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 aria-expanded={profileDropdownOpen}
@@ -314,7 +342,7 @@ export default function DashboardPage() {
             <div className="dash-topbar-left">
               <h1 className="dash-page-title">{navItems.find(i => i.id === activeSection)?.label || 'Dashboard'}</h1>
               <p className="dash-page-sub">
-                Welcome back, {profile?.full_name || 'User'}! 
+                Welcome back, {profile?.full_name || 'User'}!
                 {isStudent ? "Let's explore your career path." : "Here's your job search progress."}
               </p>
             </div>
@@ -328,171 +356,33 @@ export default function DashboardPage() {
 
           <div id="dash-content-area">
             {activeSection === 'overview' && isStudent && (
-              <div>
-                <div className="dash-stats">
-                  <div className="dash-stat-card card-accent-purple">
-                    <div className="ds-icon"><GraduationCap size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{recommendations.length}</div>
-                    <div className="ds-lbl">Career Paths Found</div>
-                  </div>
-                  <div className="dash-stat-card card-accent-blue">
-                    <div className="ds-icon"><MessageSquare size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{stats?.conversations_count || 0}</div>
-                    <div className="ds-lbl">AI Sessions</div>
-                  </div>
-                  <div className="dash-stat-card card-accent-green">
-                    <div className="ds-icon"><Map size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{stats?.active_roadmaps || 0}</div>
-                    <div className="ds-lbl">Learning Roadmaps</div>
-                  </div>
-                  <div className="dash-stat-card card-accent-pink">
-                    <div className="ds-icon"><TrendingUp size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{stats?.profile_score || 0}%</div>
-                    <div className="ds-lbl">Profile Score</div>
-                  </div>
-                </div>
-
-                <div className="dash-overview-grid">
-                  <div className="dash-card dash-card-featured">
-                    <div className="dash-card-featured-header">
-                      <Compass size={20} />
-                      <h3>Explore Career Paths</h3>
-                    </div>
-                    <p className="dash-card-desc">Discover careers that align with your interests, skills, and academic background.</p>
-                    <button onClick={() => { setActiveSection('recommendations'); generateRecommendations(); }} className="dash-action-btn" disabled={loadingRecommendations}>
-                      {loadingRecommendations ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <><Zap size={16} /> Get AI Recommendations</>}
-                    </button>
-                  </div>
-                  <div className="dash-card dash-card-featured">
-                    <div className="dash-card-featured-header">
-                      <BookOpen size={20} />
-                      <h3>Learning Roadmaps</h3>
-                    </div>
-                    <p className="dash-card-desc">Build a structured learning path for your dream career with AI-generated milestones.</p>
-                    <button onClick={() => setActiveSection('roadmaps')} className="dash-action-btn">
-                      <Map size={16} /> View Roadmaps
-                    </button>
-                  </div>
-                  <div className="dash-card dash-card-featured">
-                    <div className="dash-card-featured-header">
-                      <Bot size={20} />
-                      <h3>AI Career Coach</h3>
-                    </div>
-                    <p className="dash-card-desc">Chat with your personal AI assistant about degrees, universities, and career options.</p>
-                    <button onClick={() => { setActiveSection('ai-chat'); createNewConversation(); }} className="dash-action-btn">
-                      <MessageSquare size={16} /> Start Chat
-                    </button>
-                  </div>
-                </div>
-
-                <div className="section-inner" style={{ marginTop: '28px' }}>
-                  <div className="section-head">
-                    <div className="section-label">Recent Activity</div>
-                    <h2 className="section-title">Your Progress</h2>
-                  </div>
-                  {stats?.recent_activity && stats.recent_activity.length > 0 ? (
-                    <div className="dash-card">
-                      {stats.recent_activity.map((activity: any, idx: number) => (
-                        <div key={idx} className="dash-activity-item" style={{ borderBottom: idx < stats.recent_activity.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                          <div className="dash-activity-title">{activity.title}</div>
-                          <div className="dash-activity-meta">
-                            {activity.type} • {new Date(activity.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="dash-empty-state">
-                      <p>Start exploring to see your activity here!</p>
-                      <button onClick={() => setActiveSection('recommendations')} className="dash-empty-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Explore Career Paths →</button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <OverviewStudent
+                stats={stats}
+                profile={profile}
+                roadmaps={roadmaps}
+                recommendations={recommendations}
+                conversations={conversations}
+                loadingRecommendations={loadingRecommendations}
+                onSectionChange={setActiveSection}
+                onGenerateRecommendations={generateRecommendations}
+                onStartChat={() => { setActiveSection('ai-chat'); createNewConversation() }}
+              />
             )}
 
             {activeSection === 'overview' && isJobSeeker && (
-              <div>
-                <div className="dash-stats">
-                  <div className="dash-stat-card card-accent-pink">
-                    <div className="ds-icon"><Target size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{stats?.jobs_applied || 0}</div>
-                    <div className="ds-lbl">Jobs Applied</div>
-                  </div>
-                  <div className="dash-stat-card card-accent-blue">
-                    <div className="ds-icon"><Briefcase size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{jobs.length}</div>
-                    <div className="ds-lbl">Jobs Found</div>
-                  </div>
-                  <div className="dash-stat-card card-accent-purple">
-                    <div className="ds-icon"><MessageSquare size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{stats?.conversations_count || 0}</div>
-                    <div className="ds-lbl">AI Sessions</div>
-                  </div>
-                  <div className="dash-stat-card card-accent-green">
-                    <div className="ds-icon"><TrendingUp size={22} strokeWidth={2} /></div>
-                    <div className="ds-val purple">{stats?.profile_score || 0}%</div>
-                    <div className="ds-lbl">Profile Score</div>
-                  </div>
-                </div>
-
-                <div className="dash-overview-grid">
-                  <div className="dash-card dash-card-featured">
-                    <div className="dash-card-featured-header">
-                      <Search size={20} />
-                      <h3>Smart Job Search</h3>
-                    </div>
-                    <p className="dash-card-desc">Find matching opportunities using AI-powered search across top job platforms.</p>
-                    <button onClick={() => { setActiveSection('jobs'); searchJobs(); }} className="dash-action-btn">
-                      <Briefcase size={16} /> Search Jobs
-                    </button>
-                  </div>
-                  <div className="dash-card dash-card-featured">
-                    <div className="dash-card-featured-header">
-                      <FileText size={20} />
-                      <h3>Resume Builder</h3>
-                    </div>
-                    <p className="dash-card-desc">Upload and analyze your resume with AI to maximize your application success.</p>
-                    <button onClick={() => setActiveSection('resume')} className="dash-action-btn">
-                      <Upload size={16} /> Manage Resume
-                    </button>
-                  </div>
-                  <div className="dash-card dash-card-featured">
-                    <div className="dash-card-featured-header">
-                      <Bot size={20} />
-                      <h3>Interview Prep</h3>
-                    </div>
-                    <p className="dash-card-desc">Practice interviews and get coaching from your AI career assistant.</p>
-                    <button onClick={() => { setActiveSection('ai-chat'); createNewConversation(); }} className="dash-action-btn">
-                      <MessageSquare size={16} /> Start Chat
-                    </button>
-                  </div>
-                </div>
-
-                <div className="section-inner" style={{ marginTop: '28px' }}>
-                  <div className="section-head">
-                    <div className="section-label">Recent Activity</div>
-                    <h2 className="section-title">Job Search Progress</h2>
-                  </div>
-                  {stats?.recent_activity && stats.recent_activity.length > 0 ? (
-                    <div className="dash-card">
-                      {stats.recent_activity.map((activity: any, idx: number) => (
-                        <div key={idx} className="dash-activity-item" style={{ borderBottom: idx < stats.recent_activity.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                          <div className="dash-activity-title">{activity.title}</div>
-                          <div className="dash-activity-meta">
-                            {activity.type} • {new Date(activity.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="dash-empty-state">
-                      <p>Start your job search to track your progress here!</p>
-                      <button onClick={() => setActiveSection('jobs')} className="dash-empty-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Search Jobs →</button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <OverviewJobSeeker
+                stats={stats}
+                profile={profile}
+                roadmaps={roadmaps}
+                jobs={jobs}
+                conversations={conversations}
+                recommendations={recommendations}
+                loadingRecommendations={loadingRecommendations}
+                onSectionChange={setActiveSection}
+                onGenerateRecommendations={generateRecommendations}
+                onStartChat={() => { setActiveSection('ai-chat'); createNewConversation() }}
+                onSearchJobs={() => { setActiveSection('jobs'); searchJobs() }}
+              />
             )}
 
             {activeSection === 'jobs' && (
@@ -518,16 +408,15 @@ export default function DashboardPage() {
                       className="dash-input"
                     />
                     <button type="submit" disabled={loadingJobs} className="dash-search-btn">
-                      {loadingJobs ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <Search size={18} />}
+                      {loadingJobs ? <span className="btn-spinner" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }} /> : <Search size={18} />}
                       Search
                     </button>
                   </div>
                 </form>
                 <div className="dash-grid-list">
                   {loadingJobs ? (
-                    <div className="dash-empty-state">
-                      <div className="dot-flashing" style={{ margin: '0 auto 16px' }}><span></span><span></span><span></span></div>
-                      <p>Searching for jobs...</p>
+                    <div className="dash-grid-list">
+                      {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
                     </div>
                   ) : jobs.length > 0 ? jobs.map((job) => (
                     <div key={job.id} className="dash-card">
@@ -552,9 +441,9 @@ export default function DashboardPage() {
             {activeSection === 'ai-chat' && (
               <div className="section-inner">
                 {activeConversationId ? (
-                  <ChatInterface 
-                    conversationId={activeConversationId} 
-                    onBack={() => setActiveConversationId(null)} 
+                  <ChatInterface
+                    conversationId={activeConversationId}
+                    onBack={() => setActiveConversationId(null)}
                   />
                 ) : (
                   <>
@@ -567,8 +456,8 @@ export default function DashboardPage() {
                     </div>
                     <div className="dash-grid-list">
                       {conversations.length > 0 ? conversations.map((conv) => (
-                        <div 
-                          key={conv.id} 
+                        <div
+                          key={conv.id}
                           onClick={() => setActiveConversationId(conv.id)}
                           className="dash-card dash-card-clickable"
                         >
@@ -636,7 +525,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="dash-form-actions">
                         <button type="submit" disabled={loadingRoadmap} className="dash-action-btn">
-                          {loadingRoadmap ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <Plus size={18} />}
+                          {loadingRoadmap ? <span className="btn-spinner" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }} /> : <Plus size={18} />}
                           Generate Roadmap
                         </button>
                         <button type="button" onClick={() => setShowRoadmapForm(false)} className="dash-cancel-btn">
@@ -668,8 +557,8 @@ export default function DashboardPage() {
                               const isCompleted = roadmap.progress > 0 && idx < Math.round((roadmap.progress / 100) * total)
                               const isCurrent = roadmap.progress > 0 && idx === Math.round((roadmap.progress / 100) * total)
                               return (
-                                <div 
-                                  key={idx} 
+                                <div
+                                  key={idx}
                                   className={`timeline-node ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
                                   style={{ animationDelay: `${idx * 0.15}s` }}
                                 >
@@ -723,7 +612,7 @@ export default function DashboardPage() {
                   <div className="section-label">Career Recommendations</div>
                   <h2 className="section-title">Personalized Career Paths</h2>
                   <button onClick={generateRecommendations} disabled={loadingRecommendations} className="dash-action-btn">
-                    {loadingRecommendations ? <span className="dot-flashing-sm"><span></span><span></span><span></span></span> : <Plus size={18} />}
+                    {loadingRecommendations ? <span className="btn-spinner" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }} /> : <Plus size={18} />}
                     Generate New
                   </button>
                 </div>

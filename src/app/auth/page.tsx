@@ -35,7 +35,6 @@ export default function AuthPage() {
         // Always redirect to onboarding after login
         // Onboarding handles routing to dashboard based on chosen path
         router.push('/onboarding')
-        router.refresh()
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
           email,

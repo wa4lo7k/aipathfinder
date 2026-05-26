@@ -12,6 +12,9 @@ export const ProfileUpdateSchema = z.object({
   skills: z.array(z.string().min(1)).max(50).optional(),
   career_goals: z.string().max(2000).optional().nullable(),
   experience_level: z.string().max(100).optional().nullable(),
+  onboarding_step: z.number().int().optional(),
+  onboarding_completed: z.boolean().optional(),
+  onboarding_data: z.any().optional(),
 })
 
 export const ConversationCreateSchema = z.object({

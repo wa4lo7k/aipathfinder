@@ -27,6 +27,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedPath =
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/onboarding') ||
+    pathname.startsWith('/setup') ||
     (pathname.startsWith('/api/') && !pathname.startsWith('/api/webhooks/'))
 
   if (isProtectedPath && !user) {
